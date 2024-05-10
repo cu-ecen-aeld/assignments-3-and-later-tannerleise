@@ -1,4 +1,8 @@
 #include "systemcalls.h"
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <fcntl.h>
 
 /**
  * @param cmd the command to execute with system()
@@ -9,15 +13,17 @@
 */
 bool do_system(const char *cmd)
 {
-
 /*
  * TODO  add your code here
  *  Call the system() function with the command set in the cmd
  *   and return a boolean true if the system() call completed with success
  *   or false() if it returned a failure
 */
-
-    return true;
+	if(system(cmd) != 0){
+		return false;
+	}
+	
+   	return true;
 }
 
 /**
@@ -48,20 +54,48 @@ bool do_exec(int count, ...)
     // this line is to avoid a compile warning before your implementation is complete
     // and may be removed
     command[count] = command[count];
-
+    va_end(args);
 /*
  * TODO:
  *   Execute a system command by calling fork, execv(),
- *   and wait instead of system (see LSP page 161).
+ *   and wait instead of system (see LSP page 133 and 140-143).
  *   Use the command[0] as the full path to the command to execute
  *   (first argument to execv), and use the remaining arguments
  *   as second argument to the execv() command.
  *
-*/
+*/  
+    pid_t pid, wait_pid;
+    int ret, status;
+    
+    bool result = false;
 
-    va_end(args);
+    pid = fork();
+    //This is the child
+    if(!pid){
+    	ret = execv(command[0], command);
+    	if(ret == -1){
+    	   perror("execv error: failed to execute");
+    	   exit(EXIT_FAILURE);
+    	}
+    }
+    //This is the parent
+    else if(pid > 0){
+    	//waitpid returns -1 if there is a failure
+    	wait_pid = waitpid(pid, &status, 0);
+    	if(wait_pid == -1){
+    	   result = false;
+    	}
+    	if(WIFEXITED(status) && (WEXITSTATUS(status) == 0)){
+    	   result = true;
+    	}
+    }
+    //Any number that is negative, indicating an error
+    else{
+    	perror("fork error: failed to fork");
+    	result = false;
+    }
 
-    return true;
+    return result;
 }
 
 /**
@@ -83,6 +117,7 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
     // this line is to avoid a compile warning before your implementation is complete
     // and may be removed
     command[count] = command[count];
+    va_end(args);
 
 
 /*
@@ -92,8 +127,46 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
  *   The rest of the behaviour is same as do_exec()
  *
 */
+    pid_t pid, wait_pid;
+    int ret, status;
+    bool result = false;
+    int fd = open(outputfile, O_WRONLY|O_TRUNC|O_CREAT, 0644);
+    if (fd < 0){ 
+    	perror("open: Failed to open file"); 
+    	return false;
+    }
+    
+    pid = fork();
+    //This is the child
+    if(!pid){
+    	if (dup2(fd, 1) < 0){ 
+    		perror("dup2"); 
+    		return false; 
+    	}
+    	close(fd);
+	ret = execv(command[0], command);
+    	if(ret == -1){
+    	   perror("execv error: failed to execute");
+    	   exit(EXIT_FAILURE);
+    	}
+    }
+    //This is the parent
+    else if(pid > 0){
+    	//waitpid returns -1 if there is a failure
+    	wait_pid = waitpid(pid, &status, 0);
+    	if(wait_pid == -1){
+    	   result = false;
+    	}
+    	if(WIFEXITED(status) && (WEXITSTATUS(status) == 0)){
+    	   result = true;
+    	}
+    }
+    //Any number that is negative, indicating an error
+    else{
+    	perror("fork error: failed to fork");
+    	result = false;
+    }
 
-    va_end(args);
-
+    return result;
     return true;
 }

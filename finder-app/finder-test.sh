@@ -52,7 +52,8 @@ fi
 #Uncommented these lines
 echo "Removing the old writer utility and compiling as a native application"
 make clean
-make
+# Added this as a part of assignment 3, will need to remove in part 2
+# make CROSS_COMPILE=aarch64-none-linux-gnu- all
 
 for i in $( seq 1 $NUMFILES)
 do
