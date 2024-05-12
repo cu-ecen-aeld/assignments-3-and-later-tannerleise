@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 #-ne denotes !=, You can use either
 
 #White space matters in variable declaration

@@ -14,7 +14,7 @@ ARCH=arm64
 CROSS_COMPILE=aarch64-none-linux-gnu-
 #Added this for the busybox dependancies in the cross compile directory. Easier to read and debug with this as the base directory
 #I saw another possible way to do this using $(${CROSS_COMPILE}gcc -print-sysroot)
-CC_SYSROOT=/home/tale5311/arm-cross-compiler/gcc-arm-10.3-2021.07-x86_64-aarch64-none-linux-gnu/aarch64-none-linux-gnu
+CC_SYSROOT=/home/tale5311/arm-cross-compiler/gcc-arm-10.3-2021.07-x86_64-aarch64-none-linux-gnu/aarch64-none-linux-gnu/libc
 
 #If arguments are less than 1, use the default OUTDIR, if not, used the one specified as an argument
 if [ $# -lt 1 ]
@@ -48,23 +48,26 @@ if [ ! -e ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ]; then
     # TODO: Add your kernel build steps here
     #-j4 just tells us how many cpu cores we can use to build (so 4 in our case)
     #clean step
-    echo "do I make it first"
+    echo "do I make it first-----------------------------------------------------------------------------------------------------------"
     make ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} mrproper
-    echo "do I make it second"
+    echo "do I make it second-----------------------------------------------------------------------------------------------------------"
     #defconfig
     make -j4 ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} defconfig
-    echo "do I make it third"
+    echo "do I make it third-----------------------------------------------------------------------------------------------------------"
     #vmlinux (build the kernel image for booting with QEMU)
     make -j4 ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} all
+    echo "FINISHED COMPILATION-----------------------------------------------------------------------------------------------------------"
+    
     #modules (skipped because its too big)
     #make -j4 ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} modules
-    #device tree
-    make -j4 ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} dtbs
+    #device tree (skipped because its too big)
+    #make -j4 ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} dtbs
     
     
 fi
 
 echo "Adding the Image in outdir"
+cp ${OUTDIR}/linux-stable/arch/arm64/boot/Image ${OUTDIR}
 
 echo "Creating the staging directory for the root filesystem"
 cd "$OUTDIR"
@@ -76,6 +79,7 @@ fi
 
 # TODO: Create necessary base directories
 #The rootfs directory was deleted if it existed, so we gotta remake it
+echo "CREATING BASE DIRECTORIES----------------------------------------------------------------------------------------------------------"
 mkdir -p rootfs
 #lets move there, providing absolute path as specified in instructions
 cd "${OUTDIR}/rootfs" 
@@ -83,6 +87,7 @@ mkdir -p bin dev etc home lib lib64 proc sbin sys tmp usr var
 mkdir -p usr/bin usr/lib usr/sbin
 mkdir -p var/log
 
+echo "BUSYBOX INSTALL-----------------------------------------------------------------------------------------------------------"
 cd "$OUTDIR"
 if [ ! -d "${OUTDIR}/busybox" ]
 then
@@ -101,35 +106,42 @@ make distclean
 make defconfig
 make -j4 ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE}
 make -j4 CONFIG_PREFIX=${OUTDIR}/rootfs ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} install 
+cd ${OUTDIR}/rootfs
 
 echo "Library dependencies"
+echo "Library dependencies-----------------------------------------------------------------------------------------------------------"
 ${CROSS_COMPILE}readelf -a bin/busybox | grep "program interpreter"
 ${CROSS_COMPILE}readelf -a bin/busybox | grep "Shared library"
 
 # TODO: Add library dependencies to rootfs
+echo "COPYING dependencies-----------------------------------------------------------------------------------------------------------"
 cp ${CC_SYSROOT}/lib/ld-linux-aarch64.so.1 ${OUTDIR}/rootfs/lib
 cp ${CC_SYSROOT}/lib64/libm.so.6 ${OUTDIR}/rootfs/lib64
 cp ${CC_SYSROOT}/lib64/libresolv.so.2 ${OUTDIR}/rootfs/lib64
 cp ${CC_SYSROOT}/lib64/libc.so.6 ${OUTDIR}/rootfs/lib64
 
 # TODO: Make device nodes
-sudo mknod -m 666 ${OUTDIR}/rootfsdev/null c 1 3
-sudo mknod -m 666 ${OUTDIR}/rootfsdev/console c 5 1
+echo "DEVICE NODES-----------------------------------------------------------------------------------------------------------"
+sudo mknod -m 666 ${OUTDIR}/rootfs/dev/null c 1 3
+sudo mknod -m 666 ${OUTDIR}/rootfs/dev/console c 5 1
 
 # TODO: Clean and build the writer utility
 #Moving to that repo
+echo "WRITER UTIL-----------------------------------------------------------------------------------------------------------"
 cd ~/Repos/assignment-1-tannerleise/finder-app/
 make clean
 make CROSS_COMPILE=${CROSS_COMPILE}
 
 # TODO: Copy the finder related scripts and executables to the /home directory
 # on the target rootfs
-mkdir -p ${OUTPUTDIR}/rootfs/home/conf
-cp autorun-qemu.sh finder.sh finder-test.sh writer "${OUTPUTDIR}/rootfs/home"
-cp conf/* "${OUTPUTDIR}/rootfs/home/conf"
+echo "COPYING DIRS-----------------------------------------------------------------------------------------------------------"
+mkdir -p ${OUTDIR}/rootfs/home/conf
+cp autorun-qemu.sh finder.sh finder-test.sh writer "${OUTDIR}/rootfs/home"
+cp conf/* "${OUTDIR}/rootfs/home/conf"
 
 # TODO: Chown the root directory
-cd "{$OUTDIR}/rootfs"
+echo "CHOWN AND CREATE ROOT-----------------------------------------------------------------------------------------------------------"
+cd "${OUTDIR}/rootfs"
 #recursively change the owner of all files in the current directory to root:root
 sudo chown -R root:root *
 
@@ -137,4 +149,6 @@ sudo chown -R root:root *
 find . | cpio -H newc -ov --owner root:root > ${OUTDIR}/initramfs.cpio
 
 # TODO: Create initramfs.cpio.gz
+echo "CREATING TAR-----------------------------------------------------------------------------------------------------------"
+cd ${OUTDIR}
 gzip -f initramfs.cpio
