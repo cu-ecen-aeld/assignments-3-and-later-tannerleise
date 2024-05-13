@@ -13,7 +13,7 @@ FINDER_APP_DIR=$(realpath $(dirname $0))
 ARCH=arm64
 CROSS_COMPILE=aarch64-none-linux-gnu-
 #Added this for the busybox dependancies in the cross compile directory. Easier to read and debug with this as the base directory
-CC_SYSROOT=${CROSS_COMPILE}gcc -print-sysroot
+CC_SYSROOT=$(${CROSS_COMPILE}gcc -print-sysroot)
 
 #If arguments are less than 1, use the default OUTDIR, if not, used the one specified as an argument
 if [ $# -lt 1 ]
