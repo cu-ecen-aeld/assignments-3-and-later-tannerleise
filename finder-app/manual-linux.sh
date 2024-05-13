@@ -115,10 +115,16 @@ ${CROSS_COMPILE}readelf -a bin/busybox | grep "Shared library"
 
 # TODO: Add library dependencies to rootfs
 echo "COPYING dependencies-----------------------------------------------------------------------------------------------------------"
-cp ${CC_SYSROOT}/lib/ld-linux-aarch64.so.1 ${OUTDIR}/rootfs/lib
-cp ${CC_SYSROOT}/lib64/libm.so.6 ${OUTDIR}/rootfs/lib64
-cp ${CC_SYSROOT}/lib64/libresolv.so.2 ${OUTDIR}/rootfs/lib64
-cp ${CC_SYSROOT}/lib64/libc.so.6 ${OUTDIR}/rootfs/lib64
+#cp ${CC_SYSROOT}/lib/ld-linux-aarch64.so.1 ${OUTDIR}/rootfs/lib
+#cp ${CC_SYSROOT}/lib64/libm.so.6 ${OUTDIR}/rootfs/lib64
+#cp ${CC_SYSROOT}/lib64/libresolv.so.2 ${OUTDIR}/rootfs/lib64
+#cp ${CC_SYSROOT}/lib64/libc.so.6 ${OUTDIR}/rootfs/lib64
+
+# Appears the runner wasn't able to find these files, trying this approach as seen on the forums
+find / -type f -name "ld-linux-aarch64.so.1" -exec cp {} ${OUTDIR}/rootfs/lib/ \;
+find / -type f -name "libm.so.6" -exec cp {} ${OUTDIR}/rootfs/lib64/ \;
+find / -type f -name "libresolv.so.2" -exec cp {} ${OUTDIR}/rootfs/lib64/ \;
+find / -type f -name "libc.so.6" -exec cp {} ${OUTDIR}/rootfs/lib64/ \;
 
 # TODO: Make device nodes
 echo "DEVICE NODES-----------------------------------------------------------------------------------------------------------"
