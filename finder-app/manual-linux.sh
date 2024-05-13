@@ -135,13 +135,13 @@ sudo mknod -m 666 ${OUTDIR}/rootfs/dev/console c 5 1
 # TODO: Clean and build the writer utility
 #Moving to that repo
 echo "WRITER UTIL-----------------------------------------------------------------------------------------------------------"
-cd ~/Repos/assignment-1-tannerleise/finder-app/
+cd ${FINDER_APP_DIR}
 make clean
 make CROSS_COMPILE=${CROSS_COMPILE}
 
 # TODO: Copy the finder related scripts and executables to the /home directory
 # on the target rootfs
-# echo "COPYING DIRS-----------------------------------------------------------------------------------------------------------"
+echo "COPYING DIRS-----------------------------------------------------------------------------------------------------------"
 mkdir -p ${OUTDIR}/rootfs/home/conf
 cp autorun-qemu.sh finder.sh finder-test.sh writer "${OUTDIR}/rootfs/home"
 cp conf/* "${OUTDIR}/rootfs/home/conf"
