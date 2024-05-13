@@ -13,8 +13,7 @@ FINDER_APP_DIR=$(realpath $(dirname $0))
 ARCH=arm64
 CROSS_COMPILE=aarch64-none-linux-gnu-
 #Added this for the busybox dependancies in the cross compile directory. Easier to read and debug with this as the base directory
-#I saw another possible way to do this using $(${CROSS_COMPILE}gcc -print-sysroot)
-CC_SYSROOT=/home/tale5311/arm-cross-compiler/gcc-arm-10.3-2021.07-x86_64-aarch64-none-linux-gnu/aarch64-none-linux-gnu/libc
+CC_SYSROOT='${CROSS_COMPILE}gcc -print-sysroot)'
 
 #If arguments are less than 1, use the default OUTDIR, if not, used the one specified as an argument
 if [ $# -lt 1 ]
@@ -115,16 +114,16 @@ ${CROSS_COMPILE}readelf -a bin/busybox | grep "Shared library"
 
 # TODO: Add library dependencies to rootfs
 echo "COPYING dependencies-----------------------------------------------------------------------------------------------------------"
-#cp ${CC_SYSROOT}/lib/ld-linux-aarch64.so.1 ${OUTDIR}/rootfs/lib
-#cp ${CC_SYSROOT}/lib64/libm.so.6 ${OUTDIR}/rootfs/lib64
-#cp ${CC_SYSROOT}/lib64/libresolv.so.2 ${OUTDIR}/rootfs/lib64
-#cp ${CC_SYSROOT}/lib64/libc.so.6 ${OUTDIR}/rootfs/lib64
+cp ${CC_SYSROOT}/lib/ld-linux-aarch64.so.1 ${OUTDIR}/rootfs/lib
+cp ${CC_SYSROOT}/lib64/libm.so.6 ${OUTDIR}/rootfs/lib64
+cp ${CC_SYSROOT}/lib64/libresolv.so.2 ${OUTDIR}/rootfs/lib64
+cp ${CC_SYSROOT}/lib64/libc.so.6 ${OUTDIR}/rootfs/lib64
 
 # Appears the runner wasn't able to find these files, trying this approach as seen on the forums
-find / -type f -name "ld-linux-aarch64.so.1" -exec cp {} ${OUTDIR}/rootfs/lib/ \;
-find / -type f -name "libm.so.6" -exec cp {} ${OUTDIR}/rootfs/lib64/ \;
-find / -type f -name "libresolv.so.2" -exec cp {} ${OUTDIR}/rootfs/lib64/ \;
-find / -type f -name "libc.so.6" -exec cp {} ${OUTDIR}/rootfs/lib64/ \;
+#find / -type f -name "ld-linux-aarch64.so.1" -exec cp {} ${OUTDIR}/rootfs/lib/ \;
+#find / -type f -name "libm.so.6" -exec cp {} ${OUTDIR}/rootfs/lib64/ \;
+#find / -type f -name "libresolv.so.2" -exec cp {} ${OUTDIR}/rootfs/lib64/ \;
+#find / -type f -name "libc.so.6" -exec cp {} ${OUTDIR}/rootfs/lib64/ \;
 
 # TODO: Make device nodes
 echo "DEVICE NODES-----------------------------------------------------------------------------------------------------------"
