@@ -128,6 +128,7 @@ find / -type f -name "libc.so.6" -exec cp {} ${OUTDIR}/rootfs/lib64/ \;
 
 # TODO: Make device nodes
 echo "DEVICE NODES-----------------------------------------------------------------------------------------------------------"
+cd ${OUTDIR}/rootfs
 sudo mknod -m 666 ${OUTDIR}/rootfs/dev/null c 1 3
 sudo mknod -m 666 ${OUTDIR}/rootfs/dev/console c 5 1
 
