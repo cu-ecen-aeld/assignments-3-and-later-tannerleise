@@ -9,7 +9,7 @@ NUMFILES=10
 WRITESTR=AELD_IS_FUN
 WRITEDIR=/tmp/aeld-data
 username=$(cat etc/finder-app/conf/username.txt)
-OUTPUTFILE=$(cat /tmp/assignment4-result.txt)
+OUTPUTFILE=/tmp/assignment4-result.txt
 if [ $# -lt 3 ]
 then
 	echo "Using default value ${WRITESTR} for string to write"
@@ -24,7 +24,7 @@ else
 	WRITESTR=$2
 	WRITEDIR=/tmp/aeld-data/$3
 fi
-
+touch ${OUTPUTFILE}
 MATCHSTR="The number of files are ${NUMFILES} and the number of matching lines are ${NUMFILES}"
 
 echo "Writing ${NUMFILES} files containing string ${WRITESTR} to ${WRITEDIR}"
