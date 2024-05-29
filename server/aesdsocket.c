@@ -6,6 +6,16 @@ static void signal_handler(int signo);
 bool signal_caught = false;
 
 int main(int argc, char* argv[]){
+    //Checking -d argument for running as daemon 
+    bool daemon_mode = false;
+    if(argc > 1 && strcmp(argv[1],"-d") == 0){
+        DEBUG_LOG("Starting server in Daemon mode");
+        daemon_mode = true;
+    }
+    else{
+        DEBUG_LOG("Starting server in Normal mode");
+    }
+
     //Signal Declarations and setups
     struct sigaction new_action;                        //Naming convention is because this is replacing the "old action"
     memset(&new_action, 0, sizeof(struct sigaction));   //Set struct to all zeros
@@ -92,6 +102,33 @@ int main(int argc, char* argv[]){
         close(listen_sockfd);
         close_log();
         return -1;
+    }
+
+    //Forking according to assignment instructions if -d was specified
+    if(daemon_mode){
+        pid_t pid;
+        pid = fork();
+        //Child process
+        if(!pid){
+            //Let the child process run, no further input needed
+    	}
+    //Parent Process
+    else if(pid > 0){
+        //Tidy up and close down the parent, let the child go
+        freeaddrinfo(servinfo);
+        close(listen_sockfd);
+        close_log();
+        return 0;
+    }
+    //Any number that is negative, indicating an error
+    else{
+    	ERROR_LOG("fork error: failed to fork:%s\n", strerror(errno));
+        freeaddrinfo(servinfo);
+        close(listen_sockfd);
+        close_log();
+        return -1;
+
+    }
     }
 
     //Free up servinfo, no longer needed now that the socket is bound

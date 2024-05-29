@@ -14,7 +14,7 @@
 
 #define PORT        "9000"      //In parenthases because that is what getaddrinfo expects
 
-#define LOG_CONSOLE
+// #define LOG_CONSOLE
 #define BUFFER_SIZE 1024
 #define RECEIVE_FLAGS 0
 
