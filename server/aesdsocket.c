@@ -1,11 +1,19 @@
 //Article linked here for future reference: https://beej.us/guide/bgnet/html/#a-simple-stream-server
 #include "aesdsocket.h"
 
+/*#TODO:
+- Complete the exit function
+- Add a new thread to the LL data struct
+- Make usre there are no apparent locations of memory leaks. IE make sure that we are closing all of our connections properly and what not
 
+- We (hopefully) finished the thread logic and timer logic
+
+*/
 static void signal_handler(int signo);
 bool signal_caught = false;
-
+pthread_mutex_t mutex;
 int main(int argc, char* argv[]){
+
     //Checking -d argument for running as daemon 
     bool daemon_mode = false;
     if(argc > 1 && strcmp(argv[1],"-d") == 0){
@@ -15,6 +23,28 @@ int main(int argc, char* argv[]){
     else{
         DEBUG_LOG("Starting server in Normal mode");
     }
+
+    //Initialize our timer
+    pthread_t timer_thread;
+    struct thread_data *timer_thread_args = (struct thread_data *) malloc(sizeof(struct thread_data)); //Allocate Space for our arguments
+    timer_thread_args->mutex = &mutex;
+    timer_thread_args->sockfd = 0;
+    timer_thread_args->thread_complete = false;
+    pthread_create(&timer_thread, NULL, TimerthreadRoutine, (void *) timer_thread_args);    //Starts the timer for us
+    
+    //Initialize the linked list
+    SLIST_HEAD(slisthead, slist_data) head;
+    SLIST_INIT(&head);
+
+
+
+
+
+
+
+
+
+
 
     //Signal Declarations and setups
     struct sigaction new_action;                        //Naming convention is because this is replacing the "old action"
@@ -50,16 +80,11 @@ int main(int argc, char* argv[]){
     socklen_t client_addr_size;
     char client_ip[INET6_ADDRSTRLEN];
 
-    //Sending and receiving data
-    char receive_buffer[BUFFER_SIZE];
-    int bytes_received, bytes_sent;
-    FILE *fp;
-
 
     //Prep work for socket-----------------------------------------------------------------------------
     memset(&hints, 0, sizeof(struct addrinfo));    //Initialize all fields to 0 in hints
     hints.ai_family = AF_UNSPEC;                    //we can get addresses for either IPv4 or IPv6
-    hints.ai_socktype = SOCK_STREAM;               //We want to use a stream tather than a datagram
+    hints.ai_socktype = SOCK_STREAM;               //We want to use a stream rather than a datagram
     hints.ai_flags = AI_PASSIVE;                    //We want the function to fill our address for us (allows us to use NULL with func node argument)
 
     status = getaddrinfo(NULL, PORT, &hints, &servinfo);
@@ -159,71 +184,22 @@ int main(int argc, char* argv[]){
             continue;
         }
 
+
         //marking IP
         associateIP((struct sockaddr *) &client_addr, client_ip);
         DEBUG_LOG("Accepted connection from %s\n", client_ip);
 
-        //Open up our file to stream the data in
-        if((fp = fopen(PATH_TO_FILE, WRITE_MODE)) == NULL){
-            ERROR_LOG("Opening File Error:%s\n", strerror(errno));
-            close(listen_sockfd);
-            close(sendrec_sockfd);
-            close_log();
-            return -1;
-        }
-
-    //Sending and Receiving data------------------------------------------------------------------------
-        while(1){
-            if(signal_caught){
-            break;
-            }
-            bytes_received = recv(sendrec_sockfd, receive_buffer, BUFFER_SIZE - 1, RECEIVE_FLAGS);
-            if (bytes_received == -1) {
-                ERROR_LOG("Receive error:%s\n", strerror(errno));
-                break;
-            }
-            if(bytes_received == 0){        //Client has closed the connection!
-                break;
-            }
-
-            //Write data to the file
-            fwrite(receive_buffer, 1, bytes_received, fp);
-            if(memchr(receive_buffer, '\n', bytes_received) != NULL){   //New line detected, we are finished with the packet
-                break;
-            }
-        }
-        fclose(fp);
-
-        //Writing the data back to the client-----------------------------------------------------------
-        if((fp = fopen(PATH_TO_FILE, READ_MODE)) == NULL){
-            ERROR_LOG("Opening File to Read Error:%s\n", strerror(errno));
-            close(listen_sockfd);
-            close(sendrec_sockfd);
-            close_log();
-            return -1;
-        }
-
-        while(1){
-            if(signal_caught){
-            break;
-        }
-            bytes_received = fread(receive_buffer, 1, BUFFER_SIZE - 1, fp);
-            if(bytes_received == 0){        //End of File
-                break;
-            }
-            bytes_sent = send(sendrec_sockfd, receive_buffer, bytes_received, RECEIVE_FLAGS);
-            if(bytes_sent == -1){
-                ERROR_LOG("Sending Error:%s\n", strerror(errno));
-                close(listen_sockfd);
-                close(sendrec_sockfd);
-                close_log();
-                return -1;
-            }
-        }
+        //Hey we have accepted a connection, lets make our thread now!
+        pthread_t thread;
+        struct thread_data *thread_args = (struct thread_data *) malloc(sizeof(struct thread_data)); //Allocate Space for our arguments
+        thread_args->mutex = &mutex;
+        thread_args->sockfd = sendrec_sockfd;
+        thread_args->thread_complete = false;
+        pthread_create(&thread, NULL, DataTransferthreadRoutine, (void *) thread_args);
     }
     DEBUG_LOG("Caught Signal, exiting");
     fclose(fp);
-    close(listen_sockfd);     //close the listener socket
+    close(listen_sockfd);      //close the listener socket
     close(sendrec_sockfd);     //close the readwrite socket
     close_log();
     remove(PATH_TO_FILE);
@@ -259,3 +235,120 @@ void close_log(){
     #endif
 }
 //---------------------------------------------------------------------------------------------------------------------------------
+//This is essentially the routine the thread will run through on its creation
+//This is the write and creceive logic for the socket server
+void* DataTransferthreadRoutine(void *thread_param){
+    struct thread_data* thread_func_args = (struct thread_data *) thread_param;
+    FILE *fp;
+    //Sending and receiving data
+    char receive_buffer[BUFFER_SIZE];
+    int bytes_received, bytes_sent;
+
+
+    //Open up our file to stream the data in
+    pthread_mutex_lock(thread_func_args->mutex);
+    if((fp = fopen(PATH_TO_FILE, WRITE_MODE)) == NULL){
+        ERROR_LOG("Opening File Error:%s\n", strerror(errno));
+        close(thread_func_args->sockfd);
+        close_log();
+        return -1;
+    }
+
+    //Sending and Receiving data------------------------------------------------------------------------
+        while(1){
+            if(signal_caught){
+            break;
+            }
+            bytes_received = recv(thread_func_args->sockfd, receive_buffer, BUFFER_SIZE - 1, RECEIVE_FLAGS);
+            if (bytes_received == -1) {
+                ERROR_LOG("Receive error:%s\n", strerror(errno));
+                break;
+            }
+            if(bytes_received == 0){        //Client has closed the connection!
+                break;
+            }
+
+            //Write data to the file
+            fwrite(receive_buffer, 1, bytes_received, fp);
+            if(memchr(receive_buffer, '\n', bytes_received) != NULL){   //New line detected, we are finished with the packet
+                break;
+            }
+        }
+
+
+        //Writing the data back to the client-----------------------------------------------------------
+        if((fp = fopen(PATH_TO_FILE, READ_MODE)) == NULL){
+            ERROR_LOG("Opening File to Read Error:%s\n", strerror(errno));
+            close(thread_func_args->sockfd);
+            close_log();
+            pthread_mutex_unlock(thread_func_args->mutex);
+            return -1;
+        }
+
+        while(1){
+            if(signal_caught){
+            break;
+        }
+            bytes_received = fread(receive_buffer, 1, BUFFER_SIZE - 1, fp);
+            if(bytes_received == 0){        //End of File
+                break;
+            }
+            bytes_sent = send(thread_func_args->sockfd, receive_buffer, bytes_received, RECEIVE_FLAGS);
+            if(bytes_sent == -1){
+                ERROR_LOG("Sending Error:%s\n", strerror(errno));
+                close(thread_func_args->sockfd);
+                close_log();
+                pthread_mutex_unlock(thread_func_args->mutex);
+                return -1;
+            }
+        }
+        fclose(fp);
+        pthread_mutex_unlock(thread_func_args->mutex);
+        thread_func_args->thread_complete = true;
+        return thread_param;
+}
+//---------------------------------------------------------------------------------------------------------------------------------
+//When we create our timer, this is the routine it will go through to post timestamps
+void* TimerthreadRoutine(void *thread_param){
+    //Time is givien in seconds since last epoch
+    struct thread_data* thread_func_args = (struct thread_data *) thread_param;
+    time_t start_time = time(NULL);
+    time_t check_time = time(NULL);
+    struct tm *local_time;
+    char write_buffer[BUFFER_SIZE];
+    FILE *fp;
+    while(1){
+        if(signal_caught){
+        break;
+        }
+        //Check the time
+        check_time = time(NULL);
+        //See if it has been 10 seconds yet or not
+        if(difftime(check_time,start_time) < TIME_INTERVAL){
+            //if not, lets go to the next iteration of our loop
+            continue;
+        }
+        //10 seconds has elapsed
+        start_time = check_time;    //set our time for next iteration
+
+        local_time = localtime(&check_time); //Get it in local time format
+        strftime(write_buffer, BUFFER_SIZE, "timestamp: %a, %d %b %Y %T %z\n", local_time); //Fill a buffer with that time info
+        pthread_mutex_lock(thread_func_args->mutex);
+
+        if((fp = fopen(PATH_TO_FILE, WRITE_MODE)) == NULL){
+        ERROR_LOG("Opening File Error:%s\n", strerror(errno));
+        pthread_mutex_unlock(thread_func_args->mutex);
+        close_log();
+        return -1;
+        }
+        fwrite(write_buffer, 1, strlen(write_buffer), fp);
+        close(fp)
+        pthread_mutex_unlock(thread_func_args->mutex);
+    }
+
+}
+//---------------------------------------------------------------------------------------------------------------------------------
+//This will handle closing out all the threads that we have
+void exitfunction(){
+
+}
