@@ -45,6 +45,7 @@ struct slist_data
 {
     /* data */
     pthread_t thread;
+    struct thread_data *tdata;
     SLIST_ENTRY(slist_data) entries;
 
 };

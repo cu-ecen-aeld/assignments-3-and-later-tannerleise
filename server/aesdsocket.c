@@ -3,10 +3,7 @@
 
 /*#TODO:
 - Complete the exit function
-- Add a new thread to the LL data struct
 - Make usre there are no apparent locations of memory leaks. IE make sure that we are closing all of our connections properly and what not
-
-- We (hopefully) finished the thread logic and timer logic
 
 */
 static void signal_handler(int signo);
@@ -24,6 +21,14 @@ int main(int argc, char* argv[]){
         DEBUG_LOG("Starting server in Normal mode");
     }
 
+
+    //Initialize the linked list
+    struct slist_data *ll_thread_data = NULL;
+    struct slist_data *temp = NULL;
+    SLIST_HEAD(slisthead, slist_data) head;
+    SLIST_INIT(&head);
+
+
     //Initialize our timer
     pthread_t timer_thread;
     struct thread_data *timer_thread_args = (struct thread_data *) malloc(sizeof(struct thread_data)); //Allocate Space for our arguments
@@ -31,18 +36,13 @@ int main(int argc, char* argv[]){
     timer_thread_args->sockfd = 0;
     timer_thread_args->thread_complete = false;
     pthread_create(&timer_thread, NULL, TimerthreadRoutine, (void *) timer_thread_args);    //Starts the timer for us
-    
-    //Initialize the linked list
-    SLIST_HEAD(slisthead, slist_data) head;
-    SLIST_INIT(&head);
 
+    //Lets add our timer thread to the linked list to keep track of him
+    ll_thread_data = malloc(sizeof(ll_thread_data));
+    ll_thread_data->thread = timer_thread;
+    ll_thread_data->tdata = timer_thread_args;      //May be an issue here
 
-
-
-
-
-
-
+    SLIST_INSERT_HEAD(&head, ll_thread_data, entries);
 
 
 
@@ -174,6 +174,21 @@ int main(int argc, char* argv[]){
         if(signal_caught){
             break;
         }
+        //Before we accept any connections, let's see if any of our threads have completed
+        //------------------------------------------------------------------------------------
+        ll_thread_data = SLIST_FIRST(&head);
+        while(ll_thread_data != NULL){
+            if(ll_thread_data->tdata->thread_complete){
+                SLIST_REMOVE(&head, ll_thread_data, slist_data, entries);
+                pthread_join(ll_thread_data->thread);      //May need to switch to using a pointer for that data point, idk if it will join the right thread or not
+                temp = ll_thread_data;
+                ll_thread_data = SLIST_NEXT(ll_thread_data, entries);
+                free(temp);
+            }
+            else{
+                ll_thread_data = SLIST_NEXT(ll_thread_data, eentries);
+            }
+        }
     //accepting incoming connections------------------------------------------------------------------------
         client_addr_size = sizeof(client_addr);
         sendrec_sockfd = accept(listen_sockfd, (struct sockaddr *) &client_addr, &client_addr_size);    //Accept makes a new socket_fd so the other one can continue to listen
@@ -196,6 +211,13 @@ int main(int argc, char* argv[]){
         thread_args->sockfd = sendrec_sockfd;
         thread_args->thread_complete = false;
         pthread_create(&thread, NULL, DataTransferthreadRoutine, (void *) thread_args);
+
+        //Add the thread to our linked list
+        ll_thread_data = malloc(sizeof(ll_thread_data));
+        ll_thread_data->thread = thread;
+        ll_thread_data->tdata = thread_args;      //May be an issue here
+
+        SLIST_INSERT_HEAD(&head, ll_thread_data, entries);
     }
     DEBUG_LOG("Caught Signal, exiting");
     fclose(fp);
@@ -205,6 +227,13 @@ int main(int argc, char* argv[]){
     remove(PATH_TO_FILE);
     return 0;
 }
+
+
+
+
+
+
+
 
 //---------------------------------------------------------------------------------------------------------------------------------
 static void signal_handler(int signo){
@@ -349,6 +378,12 @@ void* TimerthreadRoutine(void *thread_param){
 }
 //---------------------------------------------------------------------------------------------------------------------------------
 //This will handle closing out all the threads that we have
+//Issue here is how do we access the head? Its declared outside of this scope and I have no idea what it's type is
 void exitfunction(){
-
+    while (!SLIST_EMPTY(&head)) {
+        ll = SLIST_FIRST(&head);
+        printf("Read2: %d\n", datap->value);
+        SLIST_REMOVE_HEAD(&head, entries);
+        free(datap);
+    }
 }
