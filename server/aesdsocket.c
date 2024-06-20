@@ -284,7 +284,7 @@ void* DataTransferthreadRoutine(void *thread_param){
         ERROR_LOG("Opening File Error:%s\n", strerror(errno));
         close(thread_func_args->sockfd);
         close_log();
-        return;
+        return thread_param;
     }
 
     //Sending and Receiving data------------------------------------------------------------------------
@@ -315,7 +315,7 @@ void* DataTransferthreadRoutine(void *thread_param){
             close(thread_func_args->sockfd);
             close_log();
             pthread_mutex_unlock(thread_func_args->mutex);
-            return;
+            return thread_param;
         }
 
         while(1){
@@ -332,7 +332,7 @@ void* DataTransferthreadRoutine(void *thread_param){
                 close(thread_func_args->sockfd);
                 close_log();
                 pthread_mutex_unlock(thread_func_args->mutex);
-                return -1;
+                return thread_param;
             }
         }
         fclose(fp);
@@ -369,16 +369,16 @@ void* TimerthreadRoutine(void *thread_param){
         pthread_mutex_lock(thread_func_args->mutex);
 
         if((fp = fopen(PATH_TO_FILE, WRITE_MODE)) == NULL){
-        ERROR_LOG("Opening File Error:%s\n", strerror(errno));
-        pthread_mutex_unlock(thread_func_args->mutex);
-        close_log();
-        return;
+            ERROR_LOG("Opening File Error:%s\n", strerror(errno));
+            pthread_mutex_unlock(thread_func_args->mutex);
+            close_log();
+            return thread_param;
         }
         fwrite(write_buffer, 1, strlen(write_buffer), fp);
         fclose(fp);
         pthread_mutex_unlock(thread_func_args->mutex);
     }
-
+    return thread_param;
 }
 //---------------------------------------------------------------------------------------------------------------------------------
 //This will handle closing out all the threads that we have
