@@ -1,5 +1,6 @@
 //Article linked here for future reference: https://beej.us/guide/bgnet/html/#a-simple-stream-server
 #include "aesdsocket.h"
+#include <pthread.h>
 
 /*#TODO:
 - Complete the exit function
@@ -7,6 +8,8 @@
 
 */
 SLIST_HEAD(slisthead, slist_data) head;
+struct slist_data *ll_thread_data = NULL;
+struct slist_data *temp = NULL;
 
 static void signal_handler(int signo);
 bool signal_caught = false;
@@ -28,8 +31,6 @@ int main(int argc, char* argv[]){
 
     //Initialize the linked list
     SLIST_INIT(&head);
-    struct slist_data *ll_thread_data = NULL;
-    struct slist_data *temp = NULL;
 
 
     //Initialize our timer
@@ -223,7 +224,7 @@ int main(int argc, char* argv[]){
         SLIST_INSERT_HEAD(&head, ll_thread_data, entries);
     }
     DEBUG_LOG("Caught Signal, exiting");
-    fclose(fp);
+    // fclose(fp);
     close(listen_sockfd);      //close the listener socket
     close(sendrec_sockfd);     //close the readwrite socket
     close_log();
@@ -283,7 +284,7 @@ void* DataTransferthreadRoutine(void *thread_param){
         ERROR_LOG("Opening File Error:%s\n", strerror(errno));
         close(thread_func_args->sockfd);
         close_log();
-        return -1;
+        return;
     }
 
     //Sending and Receiving data------------------------------------------------------------------------
@@ -314,7 +315,7 @@ void* DataTransferthreadRoutine(void *thread_param){
             close(thread_func_args->sockfd);
             close_log();
             pthread_mutex_unlock(thread_func_args->mutex);
-            return -1;
+            return;
         }
 
         while(1){
@@ -371,10 +372,10 @@ void* TimerthreadRoutine(void *thread_param){
         ERROR_LOG("Opening File Error:%s\n", strerror(errno));
         pthread_mutex_unlock(thread_func_args->mutex);
         close_log();
-        return -1;
+        return;
         }
         fwrite(write_buffer, 1, strlen(write_buffer), fp);
-        close(fp)
+        fclose(fp);
         pthread_mutex_unlock(thread_func_args->mutex);
     }
 
@@ -383,9 +384,9 @@ void* TimerthreadRoutine(void *thread_param){
 //This will handle closing out all the threads that we have
 //Issue here is how do we access the head? Its declared outside of this scope and I have no idea what it's type is
 void exitfunction(){
+    struct slist_data *datap = NULL;
     while (!SLIST_EMPTY(&head)) {
-        ll = SLIST_FIRST(&head);
-        printf("Read2: %d\n", datap->value);
+        datap = SLIST_FIRST(&head);
         SLIST_REMOVE_HEAD(&head, entries);
         free(datap);
     }

@@ -10,8 +10,7 @@
 #include <unistd.h>
 #include <signal.h>
 #include <stdbool.h>
-#include <pthread.h>
-#include "queue.h"
+#include <sys/queue.h>
 #include <time.h>
 
 
@@ -39,7 +38,7 @@ struct thread_data{
     pthread_mutex_t *mutex;
     int sockfd;
     bool thread_complete;
-}
+};
 
 struct slist_data
 {
