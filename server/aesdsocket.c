@@ -6,9 +6,13 @@
 - Make usre there are no apparent locations of memory leaks. IE make sure that we are closing all of our connections properly and what not
 
 */
+SLIST_HEAD(slisthead, slist_data) head;
+
 static void signal_handler(int signo);
 bool signal_caught = false;
 pthread_mutex_t mutex;
+
+
 int main(int argc, char* argv[]){
 
     //Checking -d argument for running as daemon 
@@ -23,10 +27,9 @@ int main(int argc, char* argv[]){
 
 
     //Initialize the linked list
+    SLIST_INIT(&head);
     struct slist_data *ll_thread_data = NULL;
     struct slist_data *temp = NULL;
-    SLIST_HEAD(slisthead, slist_data) head;
-    SLIST_INIT(&head);
 
 
     //Initialize our timer
@@ -180,13 +183,13 @@ int main(int argc, char* argv[]){
         while(ll_thread_data != NULL){
             if(ll_thread_data->tdata->thread_complete){
                 SLIST_REMOVE(&head, ll_thread_data, slist_data, entries);
-                pthread_join(ll_thread_data->thread);      //May need to switch to using a pointer for that data point, idk if it will join the right thread or not
+                pthread_join(ll_thread_data->thread, NULL);      //May need to switch to using a pointer for that data point, idk if it will join the right thread or not
                 temp = ll_thread_data;
                 ll_thread_data = SLIST_NEXT(ll_thread_data, entries);
                 free(temp);
             }
             else{
-                ll_thread_data = SLIST_NEXT(ll_thread_data, eentries);
+                ll_thread_data = SLIST_NEXT(ll_thread_data, entries);
             }
         }
     //accepting incoming connections------------------------------------------------------------------------
