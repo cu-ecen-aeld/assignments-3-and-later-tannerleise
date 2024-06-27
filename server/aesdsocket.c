@@ -1,7 +1,7 @@
+
+//---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 //Article linked here for future reference: https://beej.us/guide/bgnet/html/#a-simple-stream-server
 #include "aesdsocket.h"
-#include <pthread.h>
-
 /*#TODO:
 - Complete the exit function
 - Make usre there are no apparent locations of memory leaks. IE make sure that we are closing all of our connections properly and what not
@@ -224,11 +224,11 @@ int main(int argc, char* argv[]){
         SLIST_INSERT_HEAD(&head, ll_thread_data, entries);
     }
     DEBUG_LOG("Caught Signal, exiting");
-    // fclose(fp);
     close(listen_sockfd);      //close the listener socket
     close(sendrec_sockfd);     //close the readwrite socket
     close_log();
     remove(PATH_TO_FILE);
+    exitfunction();
     return 0;
 }
 
@@ -280,7 +280,8 @@ void* DataTransferthreadRoutine(void *thread_param){
 
     //Open up our file to stream the data in
     pthread_mutex_lock(thread_func_args->mutex);
-    if((fp = fopen(PATH_TO_FILE, WRITE_MODE)) == NULL){
+    fp = fopen(PATH_TO_FILE, WRITE_MODE);
+    if(fp == NULL){
         ERROR_LOG("Opening File Error:%s\n", strerror(errno));
         close(thread_func_args->sockfd);
         close_log();
@@ -302,11 +303,12 @@ void* DataTransferthreadRoutine(void *thread_param){
             }
 
             //Write data to the file
-            fwrite(receive_buffer, 1, bytes_received, fp);
+            fwrite(receive_buffer, sizeof(char), bytes_received, fp);
             if(memchr(receive_buffer, '\n', bytes_received) != NULL){   //New line detected, we are finished with the packet
                 break;
             }
         }
+        fclose(fp);
 
 
         //Writing the data back to the client-----------------------------------------------------------
@@ -368,6 +370,7 @@ void* TimerthreadRoutine(void *thread_param){
         strftime(write_buffer, BUFFER_SIZE, "timestamp: %a, %d %b %Y %T %z\n", local_time); //Fill a buffer with that time info
         pthread_mutex_lock(thread_func_args->mutex);
 
+
         if((fp = fopen(PATH_TO_FILE, WRITE_MODE)) == NULL){
             ERROR_LOG("Opening File Error:%s\n", strerror(errno));
             pthread_mutex_unlock(thread_func_args->mutex);
@@ -377,6 +380,7 @@ void* TimerthreadRoutine(void *thread_param){
         fwrite(write_buffer, 1, strlen(write_buffer), fp);
         fclose(fp);
         pthread_mutex_unlock(thread_func_args->mutex);
+
     }
     return thread_param;
 }

@@ -12,6 +12,7 @@
 #include <stdbool.h>
 #include <sys/queue.h>
 #include <time.h>
+#include <pthread.h>
 
 
 #define PORT        "9000"      //In parenthases because that is what getaddrinfo expects
@@ -21,10 +22,11 @@
 #define RECEIVE_FLAGS 0
 
 #define PATH_TO_FILE "/var/tmp/aesdsocketdata" 
-#define WRITE_MODE  "a"
+#define WRITE_MODE  "a+"
 #define READ_MODE   "r"
 #define TIME_INTERVAL 10
 
+#define LOG_CONSOLE
 
 #ifdef LOG_CONSOLE          //Logs exclusively to the console
 #define DEBUG_LOG(msg,...) printf(msg "\n", ##__VA_ARGS__)

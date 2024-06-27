@@ -14,12 +14,12 @@ all: aesdsocket
 #-pthread specifies we want to link the pthread library with our program. Ensures code is thread safe and there are no race conditions
 
 #This line is telling us that how to build writer. But  in order to do that it needs writer.o (which is generated below)
-writer: writer.o
-	$(CC) -g -Wall -I/ aesdsocket.o -o aesdsocket -lpthread
+aesdsocket: aesdsocket.o
+	$(CC) -g -Wall -pthread -lrt -I/ aesdsocket.o -o aesdsocket
 
 #This line is telling us that how to build writer.o. But  in order to do that it needs writer.c (which we have written)
-aesdsocket.o: aesdsocket.c
-	$(CC) -g -Wall -c -o aesdsocket.o aesdsocket.c -lpthread
+aesdsocket.o: aesdsocket.c aesdsocket.h
+	$(CC) -g -Wall -c -pthread -lrt -o aesdsocket.o aesdsocket.c
 
 # -f specifies that we want to run the remove command without asking for confirmation from the user
 # This command is removing any .o files, .elf files, .map files, and the writer file
