@@ -13,6 +13,9 @@
 #include <sys/queue.h>
 #include <time.h>
 #include <pthread.h>
+#include <assert.h>
+ #include <sys/stat.h>
+
 
 
 #define PORT        "9000"      //In parenthases because that is what getaddrinfo expects
@@ -27,7 +30,6 @@
 #define TIME_INTERVAL 10
 
 #define LOG_CONSOLE
-
 #ifdef LOG_CONSOLE          //Logs exclusively to the console
 #define DEBUG_LOG(msg,...) printf(msg "\n", ##__VA_ARGS__)
 #define ERROR_LOG(msg,...) printf(" ERROR: " msg "\n" , ##__VA_ARGS__)
@@ -40,6 +42,8 @@ struct thread_data{
     pthread_mutex_t *mutex;
     int sockfd;
     bool thread_complete;
+    struct sockaddr_storage addr;
+    int uid;                    //This is for keeping track of what thread was closed for debug purposes
 };
 
 struct slist_data
@@ -58,6 +62,6 @@ void close_log();
 void exitfunction();
 
 //Thread functions
-void* DataTransferthreadRoutine(void *thread_param);
+static void* DataTransferthreadRoutine(void *thread_param);
 void* TimerthreadRoutine(void *thread_param);
 void exitfunction();
