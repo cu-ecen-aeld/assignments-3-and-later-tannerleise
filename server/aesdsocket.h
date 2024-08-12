@@ -12,9 +12,16 @@
 #include <stdbool.h>
 #include <sys/queue.h>
 #include <time.h>
+#include <sys/time.h>
 #include <pthread.h>
 #include <assert.h>
  #include <sys/stat.h>
+
+
+
+
+
+
 
 
 
@@ -63,5 +70,5 @@ void exitfunction();
 
 //Thread functions
 static void* DataTransferthreadRoutine(void *thread_param);
-void* TimerthreadRoutine(void *thread_param);
+static void TimerthreadRoutine(void *thread_param);
 void exitfunction();

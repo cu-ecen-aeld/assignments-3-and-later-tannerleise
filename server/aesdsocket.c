@@ -56,12 +56,26 @@ int main(int argc, char* argv[]){
     }
     
     //Initialize our timer
-    pthread_t timer_thread;
-    struct thread_data *timer_thread_args = malloc(sizeof(struct thread_data)); //Allocate Space for our arguments
-    timer_thread_args->mutex = &mutex;
-    timer_thread_args->sockfd = NULL;
-    timer_thread_args->thread_complete = false;
-    pthread_create(&timer_thread, NULL, TimerthreadRoutine, (void *) timer_thread_args);    //Starts the timer for us
+    struct sigevent sev;
+    timer_t timerid;
+    memset(&sev, 0, sizeof(sev));
+    sev.sigev_notify = SIGEV_THREAD;
+    sev.sigev_notify_function = &TimerthreadRoutine;
+    if(timer_create(CLOCK_MONOTONIC, &sev, &timerid) == -1) {
+        syslog(LOG_ERR, "Cannot register for timer signal handler");
+        exit(-1);
+    }
+
+    // Start our timer
+    struct itimerspec its;
+    its.it_value.tv_sec = 10;
+    its.it_value.tv_nsec = 0;
+    its.it_interval.tv_sec = its.it_value.tv_sec;
+    its.it_interval.tv_nsec = its.it_value.tv_nsec;
+    if (timer_settime(timerid, 0, &its, NULL) == -1) {
+        syslog(LOG_ERR, "Could not start timer.");
+        exit(-1);
+    }
 
     int uid = 0;
     while(!signal_caught){
@@ -117,9 +131,9 @@ int main(int argc, char* argv[]){
     close_log();
     fclose(fp);
     remove(PATH_TO_FILE);
-    free(timer_thread_args); 
-    pthread_kill(timer_thread, SIGINT);
-    pthread_join(timer_thread, NULL);
+    // free(timer_thread_args); 
+    // pthread_kill(timer_thread, SIGINT);
+    // pthread_join(timer_thread, NULL);
     pthread_mutex_destroy(&mutex);
     exitfunction();
     exit(0);
@@ -215,34 +229,35 @@ void* DataTransferthreadRoutine(void *thread_param){
 
 //---------------------------------------------------------------------------------------------------------------------------------
 //When we create our timer, this is the routine it will go through to post timestamps
-void* TimerthreadRoutine(void *thread_param){
-    //Time is givien in seconds since last epoch
-    struct thread_data* thread_func_args = (struct thread_data *) thread_param;
-
-    time_t start_time = time(NULL);
-    time_t check_time = time(NULL);
-    struct tm *local_time;
-    char write_buffer[BUFFER_SIZE];
-    while(!signal_caught){
-        //Check the time
-        check_time = time(NULL);
-        //See if it has been 10 seconds yet or not
-        if(difftime(check_time,start_time) < TIME_INTERVAL){
-            //if not, lets go to the next iteration of our loop
-            continue;
-        }
-        //10 seconds has elapsed
-        start_time = check_time;    //set our time for next iteration
-
-        local_time = localtime(&check_time); //Get it in local time format
-        strftime(write_buffer, BUFFER_SIZE, "timestamp: %a, %d %b %Y %T %z\n", local_time); //Fill a buffer with that time info
-        pthread_mutex_lock(thread_func_args->mutex);
-        
-        fwrite(write_buffer, 1, strlen(write_buffer), fp);
-        fflush(fp);
-        pthread_mutex_unlock(thread_func_args->mutex);
+static void TimerthreadRoutine(void *thread_param){
+    if(pthread_mutex_lock(&mutex) != 0) {
+        syslog(LOG_ERR, "Mutex lock failed");
+        return;
     }
-    return thread_param;
+
+    char outstr[256] = "timestamp:";
+    size_t outstr_target_len = sizeof(outstr) - strlen(outstr);
+    char* outstr_target = outstr + strlen(outstr);
+
+    time_t t;
+    struct tm *tmp;
+
+    t = time(NULL);
+    tmp = localtime(&t);
+    if(tmp == NULL) {
+        syslog(LOG_ERR, "Getting time failed");
+    } else if (strftime(outstr_target, outstr_target_len, "%a, %d %b %Y %T %z\n", tmp) == 0) {
+        syslog(LOG_ERR, "Getting time failed, strftime");
+    } else if(fputs(outstr, fp) < 0) {
+        syslog(LOG_ERR, "Getting time failed, strftime");
+    }
+
+    fflush(fp);
+    
+    if(pthread_mutex_unlock(&mutex)) {
+        syslog(LOG_ERR, "Mutex unlock failed");
+    }
+    return;
 }
 //---------------------------------------------------------------------------------------------------------------------------------
 //This will handle closing out all the threads that we have
@@ -362,6 +377,8 @@ int setup_listening_socket(int daemon_mode, struct addrinfo **servinfo){
             close(STDIN_FILENO);
             close(STDOUT_FILENO);
             close(STDERR_FILENO); 
+            // signal(SIGALRM, signal_handler);
+            // alarm(10);
     }
 
     //listening for connections-----------------------------------------------------------------------------

@@ -15,11 +15,11 @@ all: aesdsocket
 
 #This line is telling us that how to build writer. But  in order to do that it needs writer.o (which is generated below)
 aesdsocket: aesdsocket.o
-	$(CC) -Wall -g -pthread -lrt -I/ aesdsocket.o -o aesdsocket
+	$(CC) -Wall -g -pthread -I/ aesdsocket.o -o aesdsocket -lrt
 
 #This line is telling us that how to build writer.o. But  in order to do that it needs writer.c (which we have written)
 aesdsocket.o: aesdsocket.c aesdsocket.h
-	$(CC) -Wall -g -c -pthread -lrt -o aesdsocket.o aesdsocket.c
+	$(CC) -Wall -g -c -pthread -o aesdsocket.o aesdsocket.c -lrt
 
 # -f specifies that we want to run the remove command without asking for confirmation from the user
 # This command is removing any .o files, .elf files, .map files, and the writer file
