@@ -131,9 +131,6 @@ int main(int argc, char* argv[]){
     close_log();
     fclose(fp);
     remove(PATH_TO_FILE);
-    // free(timer_thread_args); 
-    // pthread_kill(timer_thread, SIGINT);
-    // pthread_join(timer_thread, NULL);
     pthread_mutex_destroy(&mutex);
     exitfunction();
     exit(0);
