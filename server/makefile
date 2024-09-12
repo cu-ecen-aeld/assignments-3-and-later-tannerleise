@@ -1,5 +1,6 @@
 SHELL ?= /bin/sh
 CC ?= $(CROSS_COMPILE)gcc
+LDFLAGS ?= -pthread -lrt
 
 #When I type make all, it will run the steps to compile writer
 all: aesdsocket
@@ -15,11 +16,11 @@ all: aesdsocket
 
 #This line is telling us that how to build writer. But  in order to do that it needs writer.o (which is generated below)
 aesdsocket: aesdsocket.o
-	$(CC) -Wall -g -pthread -I/ aesdsocket.o -o aesdsocket -lrt
+	$(CC) -Wall -g -I/ aesdsocket.o -o aesdsocket $(LDFLAGS)
 
 #This line is telling us that how to build writer.o. But  in order to do that it needs writer.c (which we have written)
 aesdsocket.o: aesdsocket.c aesdsocket.h
-	$(CC) -Wall -g -c -pthread -o aesdsocket.o aesdsocket.c -lrt
+	$(CC) -Wall -g -c -o aesdsocket.o aesdsocket.c $(LDFLAGS)
 
 # -f specifies that we want to run the remove command without asking for confirmation from the user
 # This command is removing any .o files, .elf files, .map files, and the writer file
