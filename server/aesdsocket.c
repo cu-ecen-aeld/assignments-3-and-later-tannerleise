@@ -65,17 +65,7 @@ int main(int argc, char* argv[]){
         syslog(LOG_ERR, "Cannot register for timer signal handler");
         exit(-1);
     }
-
-    // Start our timer
-    struct itimerspec its;
-    its.it_value.tv_sec = 10;
-    its.it_value.tv_nsec = 0;
-    its.it_interval.tv_sec = its.it_value.tv_sec;
-    its.it_interval.tv_nsec = its.it_value.tv_nsec;
-    if (timer_settime(timerid, 0, &its, NULL) == -1) {
-        syslog(LOG_ERR, "Could not start timer.");
-        exit(-1);
-    }
+    int timer_started = 0;
 
     int uid = 0;
     while(!signal_caught){
@@ -94,6 +84,20 @@ int main(int argc, char* argv[]){
             close(listen_sockfd);
             close_log();
             continue;
+        }
+        // Moved timer logic here because it starts and adds 4 timestamps before qemu test causing failure
+        if(!timer_started){
+            // Start our timer
+            struct itimerspec its;
+            its.it_value.tv_sec = 10;
+            its.it_value.tv_nsec = 0;
+            its.it_interval.tv_sec = its.it_value.tv_sec;
+            its.it_interval.tv_nsec = its.it_value.tv_nsec;
+            if (timer_settime(timerid, 0, &its, NULL) == -1) {
+                syslog(LOG_ERR, "Could not start timer.");
+                exit(-1);
+                }
+            timer_started = 1;
         }
 
 

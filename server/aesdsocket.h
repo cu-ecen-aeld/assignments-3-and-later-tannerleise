@@ -36,7 +36,6 @@
 #define READ_MODE   "r"
 #define TIME_INTERVAL 10
 
-#define LOG_CONSOLE
 #ifdef LOG_CONSOLE          //Logs exclusively to the console
 #define DEBUG_LOG(msg,...) printf(msg "\n", ##__VA_ARGS__)
 #define ERROR_LOG(msg,...) printf(" ERROR: " msg "\n" , ##__VA_ARGS__)
