@@ -1,4 +1,4 @@
-SHELL:= /bin/sh
+SHELL ?= /bin/sh
 CC ?= $(CROSS_COMPILE)gcc
 
 #When I type make all, it will run the steps to compile writer
